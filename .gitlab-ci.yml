@@ -1,0 +1,38 @@
+# GitLab CI/CD Pipeline for Cloudflare Pages
+stages:
+  - build
+  - deploy
+
+build:
+  stage: build
+  image: node:18
+  only:
+    - main
+  script:
+    - echo "Building Next.js application..."
+    - npm ci
+    - npm run build
+    - echo "Build completed successfully"
+  artifacts:
+    paths:
+      - out/
+      - package.json
+    expire_in: 1 hour
+
+deploy_to_cloudflare:
+  stage: deploy
+  image: node:18
+  only:
+    - main
+  dependencies:
+    - build
+  script:
+    - echo "Deploying to Cloudflare Pages..."
+    - npm install -g wrangler
+    - echo "Authenticating with Cloudflare..."
+    - wrangler auth login --api-token=$CF_API_TOKEN
+    - echo "Deploying with Wrangler..."
+    - wrangler pages deploy out/ --project-name=$CI_PROJECT_NAME --branch=main
+  environment:
+    name: production
+    url: https://$CI_PROJECT_NAME.pages.dev
